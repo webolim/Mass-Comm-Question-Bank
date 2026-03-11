@@ -224,7 +224,7 @@ export const objectives = [
     "answer": "(i) water/rain; (ii) reality/imagery."
   },
   {
-    "question": "Identify the elements of a Radio Format:\n(i) Music and __________\n(ii) Sound __________ and Spoken word.",
+    "question": "Identify the elements of a Radio Format:\n(i)__________\n(ii) Sound__________\n(iii) Music",
     "answer": "(i) Spoken word; (ii) effects."
   },
   {
