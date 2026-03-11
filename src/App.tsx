@@ -24,9 +24,50 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({
-    "Module 1: Introduction to Mass Communication": true,
-  });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+  const sidebarScrollRef = useRef<HTMLElement>(null);
+  const sidebarContentRef = useRef<HTMLDivElement>(null);
+  const activeChipRef = useRef<HTMLButtonElement>(null);
+  const [showSidebarScrollIndicator, setShowSidebarScrollIndicator] = useState(false);
+
+  const checkSidebarScroll = () => {
+    if (sidebarScrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = sidebarScrollRef.current;
+      setShowSidebarScrollIndicator(scrollTop + clientHeight < scrollHeight - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkSidebarScroll();
+    window.addEventListener('resize', checkSidebarScroll);
+    
+    let observer: ResizeObserver | null = null;
+    if (sidebarScrollRef.current) {
+      observer = new ResizeObserver(() => checkSidebarScroll());
+      observer.observe(sidebarScrollRef.current);
+      if (sidebarContentRef.current) {
+        observer.observe(sidebarContentRef.current);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('resize', checkSidebarScroll);
+      if (observer) observer.disconnect();
+    };
+  }, [expandedModules, isSidebarOpen]);
+
+  useEffect(() => {
+    const moduleWithTopic = hotTopics.find(m => m.terms.includes(searchQuery));
+    if (moduleWithTopic) {
+      setExpandedModules(prev => ({ ...prev, [moduleWithTopic.module]: true }));
+      // Scroll to the chip after a short delay to allow expansion animation
+      setTimeout(() => {
+        activeChipRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 300);
+    } else if (!searchQuery) {
+      setExpandedModules({});
+    }
+  }, [searchQuery]);
 
   const toggleModule = (moduleName: string) => {
     setExpandedModules(prev => ({ ...prev, [moduleName]: !prev[moduleName] }));
@@ -37,12 +78,11 @@ export default function App() {
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
 
   const currentData = tabs.find(t => t.id === activeTab)?.data || [];
@@ -128,7 +168,7 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface font-sans flex overflow-hidden">
+    <div className="min-h-screen bg-surface text-on-surface font-sans flex items-start">
       {/* Sidebar / Navigation Drawer */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -137,7 +177,7 @@ export default function App() {
             animate={{ x: 0 }}
             exit={{ x: -300 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-            className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-surface-container-low border-r border-outline-variant/30 flex flex-col shadow-xl lg:shadow-none`}
+            className={`fixed lg:sticky top-0 h-screen inset-y-0 left-0 z-50 w-72 bg-surface-container-low border-r border-outline-variant/30 flex flex-col shadow-xl lg:shadow-none`}
           >
             <div className="p-6 flex items-center justify-between">
               <h1 className="text-2xl font-semibold text-primary tracking-tight flex items-center gap-3">
@@ -156,8 +196,13 @@ export default function App() {
               <p className="text-sm font-medium text-on-surface-variant px-2 mb-2 uppercase tracking-wider">Modules 1 to 4</p>
             </div>
 
-            <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-              {tabs.map((tab) => {
+            <nav 
+              ref={sidebarScrollRef}
+              onScroll={checkSidebarScroll}
+              className="flex-1 px-3 space-y-1 overflow-y-auto pb-8"
+            >
+              <div ref={sidebarContentRef} className="space-y-1">
+                {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
@@ -218,6 +263,7 @@ export default function App() {
                             {module.terms.map((term) => (
                               <button
                                 key={term}
+                                ref={searchQuery === term ? activeChipRef : null}
                                 onClick={() => handleHotTopicClick(term)}
                                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                                   searchQuery === term
@@ -235,13 +281,27 @@ export default function App() {
                   </div>
                 ))}
               </div>
+              </div>
             </nav>
+
+            <AnimatePresence>
+              {showSidebarScrollIndicator && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-surface-container-low to-transparent pointer-events-none flex items-end justify-center pb-4"
+                >
+                  <ChevronDown className="w-5 h-5 text-on-surface-variant animate-bounce" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.aside>
         )}
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <main className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Top App Bar */}
         <header className="bg-surface/80 backdrop-blur-md sticky top-0 z-40 border-b border-outline-variant/30 px-4 py-3 flex items-center gap-4">
           <button 
@@ -264,7 +324,7 @@ export default function App() {
         </header>
 
         {/* Content Area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+        <div ref={scrollRef} className="flex-1 p-4 md:p-8">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-on-surface mb-2">
