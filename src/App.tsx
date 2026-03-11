@@ -22,13 +22,20 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode; data: any[] }[] = [
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('mcqs');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const sidebarScrollRef = useRef<HTMLElement>(null);
   const sidebarContentRef = useRef<HTMLDivElement>(null);
   const activeChipRef = useRef<HTMLButtonElement>(null);
   const [showSidebarScrollIndicator, setShowSidebarScrollIndicator] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSidebarOpen(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const checkSidebarScroll = () => {
     if (sidebarScrollRef.current) {
